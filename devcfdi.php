@@ -101,7 +101,11 @@ class CFDI {
 						$atributos = $receptor->attributes();
 						$arr_atributos = json_decode(json_encode($atributos), TRUE);
 						$arr_atributos = array_change_key_case($arr_atributos['@attributes']);
-						$this->receptor_nombre = $arr_atributos['nombre'];
+						//la siguiente asignación se hace, si y sólo si, existe el atributo nombre
+						//debería existir siempre, pero se encontraron casos en los que no se generó
+						//para hacer más robusta esta clase, se debería entonces verificar todas las asignaciones
+						//que vienen de la lectura del archivo
+						$this->receptor_nombre = ( isset($arr_atributos['nombre']) ? $arr_atributos['nombre'] : '');
 						$this->receptor_rfc = $arr_atributos['rfc'];
 						break;
 					case 'cfdi:Impuestos' :
