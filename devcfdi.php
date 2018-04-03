@@ -1,35 +1,36 @@
 <?php
-//programa que revisa varios archivos XML (CFDI) y genera lista con datos para revisar contabilidad
-$separa = ";";
-//encabezado
-foreach (glob("./cfdissat/*.xml") as $nombre_fichero)
+//Programa realizado por Roberto Medina (roberto@abcweb.mx), CDMX2018
+//
+//programa que revisa un directorio buscando los archivos XML (CFDI) que existan ahí
+//y genera lista de CFDIS, (archivo.csv) pero sólo con algunos datos (en el orden deseado) del CFDI
+// (un formato deseado, pero podría cambiarse a F2, F3, etc.)
+//para poder revisar los CFDI y utilizar para contabilidad, para enviar al contador en un Excel
+
+//Se instaancia la clase, podría recibir una cadena conteniendo todo el XML, pero aquí
+//se instancia sólo para generar una cadena de encabezados de los datos a obtener
+$c = new CFDI;
+
+//se obtiene el encabezado de un formato predefinido, se nombró F1,
+//porían generase las cambinaciones deseadas (quizá F2, F3, etc.)
+//con el orden deseado y omitiendo o incluyendo los campos deseados, depende de objetivo final
+echo $c->getResumenF1Encabezado() . "\r\n";
+
+//se recorre cada archivo xml del directorio SAT
+foreach (glob("./SAT/*.xml") as $nombre_fichero)
 	{
 	$strEntrada = file_get_contents($nombre_fichero);
-	//$strSalida = extraeCFDICompleto($strEntrada);
-	$strSalida = extraeCFDIconClase($strEntrada);
-    //echo str_replace("\n","",$strSalida) . "\r\n";
-    echo $strSalida . "\r\n";
-    }
+	//se asigana todo el contenido del archivo XML al atributo xml de la clase
+	$c->setXML($strEntrada);
+	//usando el formato F1, los valores del CFDI, para generar un nuevo renglón (uno por cada archivo)
+	echo $c->getResumenF1Valores() . "\r\n";
+	}
+//Termina programa principal
 
-function extraeCFDIconClase($cadena){
-	$c = new CFDI($cadena);
-	$c->verifica();
-	return ""
-		. $c->getTipoComprobante() . ";"
-		. $c->getFechaHora() . ";"
-		. $c->getVersion() . ";"
-		. $c->getEmisorRFC() .";"
-		. $c->getImporte() .";"
-		. $c->getIVA() .";"
-		. $c->getTotal() . ";" 
-		. $c->getPagoForma() . ";" 
-		. $c->getPagoMetodo() . ";" 		
-		. $c->getPagoCondiciones() . ";" 		
-		. $c->getConceptos() . ";" 
-		. $c->getComentarios() .";";
-}
 
+/* Declaración de Clase para manejar los CFDIs */
+// de declara clase en este mismo archivo por ser muy pequeña, y el programa que la usa también
 class CFDI {
+	//Atributos
 	private $xml;
 	private $uuid;
 	private $version;
@@ -51,9 +52,20 @@ class CFDI {
 	private $pago_forma;
 	private $pago_condiciones;
 	private $pago_metodo;
-	function __construct($cadena){
-		$this->conceptos = "[";
+	
+	/* Constructor */
+	function __construct($cadena = null){
+		if(isset($cadena) && !is_null($cadena))
+			$this->setXML($cadena);
+	}
+	/* Métodos */
+	function setXML($cadena){
+		//esta función asigna una cadena en formato XML (el contenido de un archivo CFDI)
+		//al atributo xml de la clase, pero además obtiene los atributos del CFDI y los pone
+		//en los campos correspondientes de la clase, los contenidos de esos campos pueden varios
+		//dependiendo de la versión del documento.
 		$this->xml = $cadena;
+		$this->conceptos = "[";
 		$lector = new XMLReader();
 		$lector->xml($this->xml);
 		while ($lector->read()){
@@ -138,9 +150,10 @@ class CFDI {
 					}
 			}
 		}
-	$this->conceptos .= "]";
+	$this->conceptos .= "]";		
 	}
 	function verifica(){
+		//verificación de cantidades del CFDI, que cuadren cantidades, por las dudas
 		$v_total = floatval($this->total);
 		$v_importe = $v_total / 1.16;
 		$v_iva = $v_importe * 0.16;
@@ -153,6 +166,66 @@ class CFDI {
 		}
 		$this->comentarios .= "]";
 	}
+	function getXMLbonito(){
+		//existen archivos CFDI que a veces no tienen saltos de línea y son complicado revisar
+		//esta función genera un mismo formato XML, pero legible, utilizando librería tidy.
+		$tidy_config = array( 
+			'clean' => true, 
+			'input-xml' => true, 
+			'output-xml' => true,
+			'preserve-entities' => true,
+			'indent' => true,
+			'indent-attributes' => true,
+			'indent-spaces' => 8,
+			'sort-attributes' => 'alpha',
+			'vertical-space' => true,
+			'wrap' => 0); 
+	
+	$tidy = tidy_parse_string($this->xml, $tidy_config, 'UTF8'); 
+	$tidy->cleanRepair(); 
+	return $tidy; 
+	}
+	//Las siguientes funciones son para generar un formato específico F1
+	//de los datos que debe contener una archivo CSV, para que pueda
+	//enviarse un grupo de CFDIs en una lista, en un archivo de Excel al contador
+	function getResumenF1Encabezado($separador = ";"){
+		//Encabezado del formato F1
+		if( isset($separador) && (strlen(trim($separador))>0) )
+			$separa = $separador;
+		else
+			$separa = ";";
+		//encabezado
+		return "Fecha/Hora emisión{$separa}Serie{$separa}Folio{$separa}UUID{$separa}RFC Emisor{$separa}Nombre o Razón Social{$separa}Importe{$separa}IVA{$separa}Total{$separa}Conceptos{$separa}Ver.{$separa}Tipo{$separa}Comentarios{$separa}RFC Receptor{$separa}Nombre o Razón Social{$separa}Forma de Pago{$separa}Condiciones de Pago{$separa}Método de Pago";
+	}
+	function getResumenF1Valores($separador = ";"){
+		//Valores del formato F1
+		if( isset($separador) && (strlen(trim($separador))>0) )
+			$separa = $separador;
+		else
+			$separa = ";";
+		$this->verifica();
+		return ""
+			. $this->getFechaHora() . $separa
+			. $this->getSerie() . $separa
+			. $this->getFolio() . $separa
+			. $this->getUUID() . $separa
+			. $this->getEmisorRFC() . $separa
+			. $this->getEmisorNombre() . $separa
+			. $this->getImporte() . $separa
+			. $this->getIVA() . $separa
+			. $this->getTotal() . $separa
+			. $this->getConceptos() . $separa
+			. $this->getVersion() . $separa
+			. $this->getTipoComprobante() . $separa
+			. $this->getComentarios() . $separa
+			. $this->getReceptorRFC() . $separa
+			. $this->getReceptorNombre() . $separa
+			. $this->getPagoForma() . $separa
+			. $this->getPagoCondiciones() . $separa
+			. $this->getPagoMetodo();
+	}	
+
+	/*La siguientes son funciones de lectura de los atributos del CFDI */
 	function getUUID(){
 		return $this->uuid;
 	}
@@ -208,5 +281,4 @@ class CFDI {
 		return $this->pago_metodo;
 	}		
 }
-
 ?>
