@@ -287,6 +287,9 @@ class CFDI {
 	}		
 	function getPagoMetodo(){
 		return $this->pago_metodo;
-	}		
+	}
+	function getXML(){
+                return $this->xml;
+        }	
 }
 ?>
