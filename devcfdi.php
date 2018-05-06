@@ -225,6 +225,14 @@ class CFDI {
 			. $this->getPagoMetodo();
 	}	
 
+	/* funcion que recibe una cadena RFC y determina si el CFDI está relacionado con ese RFC */
+	/* ya sea porque es el emisor, o porque es el receptor */
+	function rfc_relacionado($rfc){
+                if((strcasecmp($this->receptor_rfc,$rfc) && strcasecmp($this->emisor_rfc,$rfc)))
+                        return false;
+                else
+                        return true;
+        }	
 	/*La siguientes son funciones de lectura de los atributos del CFDI */
 	function getUUID(){
 		return $this->uuid;
