@@ -265,13 +265,13 @@ class CFDI {
 		return $this->tipocomprobante;
 	}	
 	function getImporte(){
-		return $this->importe;
+		return floatval($this->importe);
 	}	
 	function getIVA(){
-		return $this->iva;
+		return floatval($this->iva);
 	}	
 	function getTotal(){
-		return $this->total;
+		return floatval($this->total);
 	}
 	function getConceptos(){
 		return $this->conceptos;
