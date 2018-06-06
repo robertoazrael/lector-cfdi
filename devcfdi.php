@@ -105,7 +105,8 @@ class CFDI {
 						$atributos = $emisor->attributes();
 						$arr_atributos = json_decode(json_encode($atributos), TRUE);
 						$arr_atributos = array_change_key_case($arr_atributos['@attributes']);
-						$this->emisor_nombre = $arr_atributos['nombre'];
+						//el atributo nombre no es obligatorio, así que se asigna sólo si existe
+						$this->emisor_nombre = ( isset($arr_atributos['nombre']) ? $arr_atributos['nombre'] : '');
 						$this->emisor_rfc = $arr_atributos['rfc'];
 						break;
 					case 'cfdi:Receptor' :
